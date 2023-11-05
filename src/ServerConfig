@@ -1,0 +1,3 @@
+ServerPort: 0
+LogFilePath: %DESKTOP%/server_log.txt
+MaskIP: 0
