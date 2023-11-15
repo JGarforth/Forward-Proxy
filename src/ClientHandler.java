@@ -12,16 +12,18 @@ import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 public class ClientHandler implements Runnable {
 
     private final Socket clientSocket;
     private final ConfigurationManager config;
+    private final Set<String> activeConnections;
 
-    public ClientHandler(Socket clientSocket, ConfigurationManager config) {
-
+    public ClientHandler(Socket clientSocket, ConfigurationManager config, Set<String> activeConnections) {
         this.clientSocket = clientSocket;
         this.config = config;
+        this.activeConnections = activeConnections;
     }
 
     @Override
@@ -65,6 +67,9 @@ public class ClientHandler implements Runnable {
         }
         catch (IOException e) {
             Logger.logError("I/O error with client " + clientSocket.getInetAddress().getHostAddress() + ": " + e.getMessage());
+        }
+        finally {
+            activeConnections.remove(clientSocket.getInetAddress().getHostAddress());
         }
 
     }
