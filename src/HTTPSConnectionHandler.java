@@ -37,38 +37,49 @@ public class HTTPSConnectionHandler {
     }
 
     private void relayTraffic(Socket clientSocket, Socket serverSocket) {
-        Thread clientToServer = new Thread(() -> {
+        try {
+            Thread clientToServer = generateRelayThread(clientSocket.getInputStream(), serverSocket.getOutputStream());
+            Thread serverToClient = generateRelayThread(serverSocket.getInputStream(), clientSocket.getOutputStream());
+
+            clientToServer.start();
+            serverToClient.start();
+
+            clientToServer.join();
+            serverToClient.join();
+        } catch (InterruptedException e) {
+            Logger.logError("Thread interrupted: " + e);
+            Thread.currentThread().interrupt();
+        } catch (IOException e) {
+            Logger.logError("Error in input/output stream : " + e);
+        } finally {
+            closeQuietly(serverSocket);
+            closeQuietly(clientSocket);
+        }
+    }
+
+    private Thread generateRelayThread(InputStream input, OutputStream output) {
+        return  new Thread(() -> {
             try {
-                InputStream clientInput = clientSocket.getInputStream();
-                OutputStream serverOutput = serverSocket.getOutputStream();
                 byte[] buffer = new byte[4096];
                 int read;
-                while ((read = clientInput.read(buffer)) != -1) {
-                    serverOutput.write(buffer, 0, read);
-                    serverOutput.flush();
+                while ((read = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, read);
+                    output.flush();
                 }
             } catch (IOException e) {
                 Logger.logError("Could not pass data from client to target: " + e);
             }
         });
+    }
 
-        Thread serverToClient = new Thread(() -> {
+    private static void closeQuietly(Socket socket) {
+        if (socket != null && !socket.isClosed()) {
             try {
-                InputStream serverInput = serverSocket.getInputStream();
-                OutputStream clientOutput = clientSocket.getOutputStream();
-                byte[] buffer = new byte[4096];
-                int read;
-                while ((read = serverInput.read(buffer)) != -1) {
-                    clientOutput.write(buffer, 0, read);
-                    clientOutput.flush();
-                }
+                socket.close();
             } catch (IOException e) {
-                Logger.logError("Could not retrieve data from the target: " + e);
+                Logger.logError("Socket could not be closed : " + e);
             }
-        });
-
-        clientToServer.start();
-        serverToClient.start();
+        }
     }
 
     private Socket initializeSSLToTarget(String targetHost, int targetPort) throws IOException {
