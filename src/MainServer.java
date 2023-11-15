@@ -7,6 +7,9 @@
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MainServer implements Runnable{
     private final ServerSocket serverSocket;
@@ -14,16 +17,17 @@ public class MainServer implements Runnable{
     private final int port;
     private final ConfigurationManager config;
     private Thread serverThread;
+    private final Set<String> activeConnections = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     public MainServer(int port, ConfigurationManager config) {
         this.port = port;
         this.config = config;
         try {
             this.serverSocket = new ServerSocket(this.port);
-            Logger.logInfo("Server socket created and started listening on port: " + this.port); // Detailed log
+            Logger.logInfo("Server socket created and started listening on port: " + this.port);
         } catch (IOException e) {
-            System.err.println("Error: Server failed to start on port: " + this.port); // CLI output for user
-            Logger.logError("Server failed. Could not listen on port: " + this.port + ". Error: " + e.getMessage()); // Detailed log
+            System.err.println("Error: Server failed to start on port: " + this.port);
+            Logger.logError("Server failed. Could not listen on port: " + this.port + ". Error: " + e.getMessage());
             throw new RuntimeException("Could not start server on port: " + this.port, e);
         }
     }
@@ -47,11 +51,16 @@ public class MainServer implements Runnable{
         while (isRunning && !serverSocket.isClosed()) {
             try {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Client connected from " + clientSocket.getInetAddress().getHostAddress());
-                Logger.logInfo("New client connection accepted from: " + clientSocket.getInetAddress().getHostAddress());
+                if (!activeConnections.contains(clientSocket.getInetAddress().getHostAddress())) {
+                    System.out.println("\nClient connected from " + clientSocket.getInetAddress().getHostAddress());
+                    System.out.print("> ");
+                    Logger.logInfo("New client connection accepted from: " + clientSocket.getInetAddress().getHostAddress());
 
-                ClientHandler newClient = new ClientHandler(clientSocket, config);
-                new Thread(newClient).start();
+                    ClientHandler newClient = new ClientHandler(clientSocket, config, activeConnections);
+                    new Thread(newClient).start();
+
+                    activeConnections.add(clientSocket.getInetAddress().getHostAddress());
+                }
             } catch (IOException e) {
                 if (isRunning) {
                     Logger.logError("Unexpected IO exception during accept: " + e.getMessage());
