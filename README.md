@@ -30,6 +30,5 @@ Open Settings. Go to Network. Next to Network Proxy, select the gear icon.
 Choose Manual. Input the proxy IP and port.
 
 ## Improvements
-- Currently, raw threads are used, since that's what I learned in class. A move will be made to use ExecutorPool.
 - HTTPS connections currently seem to be handled incorrectly. HTTPSConnectionHandler will be updated.
 - Additional configuration options will be added, including a plan to ensure website security, the safety of downloads, and check for hostile connections being made from connected machines.
